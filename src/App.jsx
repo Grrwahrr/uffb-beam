@@ -1,7 +1,7 @@
-import WordRenderer from './components/WordRenderer'
+import WordRenderer from './components/WordRenderer';
 
 function App() {
-  return <WordRenderer />
+  return <WordRenderer />;
 }
 
-export default App
+export default App;
