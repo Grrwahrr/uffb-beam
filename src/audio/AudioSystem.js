@@ -235,28 +235,6 @@ export class AudioSystem {
     setTimeout(() => this.playHarmonic(), 2000);
   }
 
-  // Update pulse rate dynamically
-  setPulseRate(rate) {
-    this.config.pulseRate = rate;
-    if (this.tremolo) {
-      this.tremolo.frequency.value = rate;
-    }
-    if (this.pulseLFO) {
-      this.pulseLFO.frequency.value = rate * 0.7;
-    }
-  }
-
-  // Set master volume
-  setVolume(volume) {
-    this.config.volume = volume;
-    if (this.mainGain) {
-      this.mainGain.gain.value = volume * 0.6;
-    }
-    if (this.droneGain) {
-      this.droneGain.gain.value = volume * 0.1;
-    }
-  }
-
   // Cleanup function
   dispose() {
     this.intervals.forEach(interval => clearInterval(interval));

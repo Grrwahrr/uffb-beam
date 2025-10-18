@@ -20,7 +20,6 @@ export default function WordRenderer({
   // Animation timing (milliseconds)
   visiblePause = 1000, // How long words stay visible when stopped
   spawnInterval = 700, // Time between spawning new words
-  betweenPause = 500, // Unused parameter (legacy)
   // 3D positioning
   startZ = -7500, // Far distance where words spawn
   stopZ = -1050, // Target distance where words should stop
@@ -36,7 +35,6 @@ export default function WordRenderer({
   customMaxSize = 10, // Maximum custom words before overwriting buckets
   customMaxChars = 11, // Character limit for custom words
   // Audio system
-  enableAudio = true, // Enable/disable audio generation
   audioVolume = 0.3, // Master volume (0-1)
   baseOctave = 4, // Base octave for note generation
 }) {
@@ -55,14 +53,12 @@ export default function WordRenderer({
 
   // Word bucket management
   const bucketsRef = useRef(buckets.map(b => [...b]));
-  const setBucketsState = useState(bucketsRef.current.map(b => [...b]))[1];
   const overwriteCounterRef = useRef(0); // Tracks which bucket to overwrite next
 
   // Configuration object (stable reference for useEffect)
   const cfg = useRef({
     visiblePause,
     spawnInterval,
-    betweenPause,
     startZ,
     stopZ,
     slowDistance,
@@ -74,14 +70,12 @@ export default function WordRenderer({
     customEvery,
     customMaxSize,
     customMaxChars,
-    enableAudio,
     audioVolume,
     baseOctave,
   }).current;
 
   const [inputValue, setInputValue] = useState('');
   const [audioEnabled, setAudioEnabled] = useState(false); // Start with audio off
-  const [pulseRate, setPulseRate] = useState(0.15);
 
   // Handle audio system initialization when audioEnabled changes
   useEffect(() => {
@@ -89,7 +83,6 @@ export default function WordRenderer({
       const audioSystem = new AudioSystem({
         volume: cfg.audioVolume,
         baseOctave: cfg.baseOctave,
-        pulseRate: pulseRate,
       });
 
       audioSystemRef.current = audioSystem;
@@ -175,91 +168,60 @@ export default function WordRenderer({
      */
     const clampTarget = (mesh, x, y, z) => {
       const tempPos = mesh.position.clone();
-      mesh.position.set(x, y, z);
-      mesh.updateMatrixWorld();
 
-      // Calculate bounding box corners in world space
-      const box = new THREE.Box3().setFromObject(mesh);
-      const size = box.getSize(new THREE.Vector3());
-      const corners = [
-        new THREE.Vector3(x - size.x / 2, y - size.y / 2, z),
-        new THREE.Vector3(x + size.x / 2, y - size.y / 2, z),
-        new THREE.Vector3(x - size.x / 2, y + size.y / 2, z),
-        new THREE.Vector3(x + size.x / 2, y + size.y / 2, z),
-      ];
+      // Helper function to check if position is within screen bounds
+      const isPositionVisible = (testX, testY, testZ) => {
+        mesh.position.set(testX, testY, testZ);
+        mesh.updateMatrixWorld();
 
-      // Project to screen coordinates and check if within bounds
-      const screenCorners = corners.map(corner => {
-        const projected = corner.clone();
-        projected.project(camera);
-        return {
-          x: ((projected.x + 1) * mount.clientWidth) / 2,
-          y: ((-projected.y + 1) * mount.clientHeight) / 2,
-        };
-      });
+        const box = new THREE.Box3().setFromObject(mesh);
+        const size = box.getSize(new THREE.Vector3());
+        const corners = [
+          new THREE.Vector3(testX - size.x / 2, testY - size.y / 2, testZ),
+          new THREE.Vector3(testX + size.x / 2, testY - size.y / 2, testZ),
+          new THREE.Vector3(testX - size.x / 2, testY + size.y / 2, testZ),
+          new THREE.Vector3(testX + size.x / 2, testY + size.y / 2, testZ),
+        ];
 
-      const margin = cfg.edgeMargin;
-      const isOutside = screenCorners.some(
-        corner =>
-          corner.x < margin ||
-          corner.x > mount.clientWidth - margin ||
-          corner.y < margin ||
-          corner.y > mount.clientHeight - margin
-      );
+        const screenCorners = corners.map(corner => {
+          const projected = corner.clone().project(camera);
+          return {
+            x: ((projected.x + 1) * mount.clientWidth) / 2,
+            y: ((-projected.y + 1) * mount.clientHeight) / 2,
+          };
+        });
 
-      mesh.position.copy(tempPos); // Restore original position
+        return !screenCorners.some(
+          corner =>
+            corner.x < cfg.edgeMargin ||
+            corner.x > mount.clientWidth - cfg.edgeMargin ||
+            corner.y < cfg.edgeMargin ||
+            corner.y > mount.clientHeight - cfg.edgeMargin
+        );
+      };
 
-      if (isOutside) {
-        // Move word farther back in steps until it fits within screen bounds
-        let testZ = z;
-        const stepSize = 50;
-        const maxSteps = Math.abs((z - cfg.startZ) / stepSize);
-
-        for (let step = 0; step < maxSteps; step++) {
-          testZ -= stepSize; // Move farther from camera
-
-          // Test visibility at this position
-          mesh.position.set(x, y, testZ);
-          mesh.updateMatrixWorld();
-
-          const testBox = new THREE.Box3().setFromObject(mesh);
-          const testSize = testBox.getSize(new THREE.Vector3());
-          const testCorners = [
-            new THREE.Vector3(x - testSize.x / 2, y - testSize.y / 2, testZ),
-            new THREE.Vector3(x + testSize.x / 2, y - testSize.y / 2, testZ),
-            new THREE.Vector3(x - testSize.x / 2, y + testSize.y / 2, testZ),
-            new THREE.Vector3(x + testSize.x / 2, y + testSize.y / 2, testZ),
-          ];
-
-          const testScreenCorners = testCorners.map(corner => {
-            const projected = corner.clone();
-            projected.project(camera);
-            return {
-              x: ((projected.x + 1) * mount.clientWidth) / 2,
-              y: ((-projected.y + 1) * mount.clientHeight) / 2,
-            };
-          });
-
-          const testIsOutside = testScreenCorners.some(
-            corner =>
-              corner.x < margin ||
-              corner.x > mount.clientWidth - margin ||
-              corner.y < margin ||
-              corner.y > mount.clientHeight - margin
-          );
-
-          if (!testIsOutside) {
-            mesh.position.copy(tempPos);
-            return new THREE.Vector3(x, y, testZ);
-          }
-        }
-
-        // Fallback: place at safe distance if no good position found
+      // Check if original position is visible
+      if (isPositionVisible(x, y, z)) {
         mesh.position.copy(tempPos);
-        return new THREE.Vector3(x, y, cfg.startZ + 1000);
+        return new THREE.Vector3(x, y, z);
       }
 
-      return new THREE.Vector3(x, y, z);
+      // Move word farther back in steps until it fits within screen bounds
+      let testZ = z;
+      const stepSize = 50;
+      const maxSteps = Math.abs((z - cfg.startZ) / stepSize);
+
+      for (let step = 0; step < maxSteps; step++) {
+        testZ -= stepSize;
+        if (isPositionVisible(x, y, testZ)) {
+          mesh.position.copy(tempPos);
+          return new THREE.Vector3(x, y, testZ);
+        }
+      }
+
+      // Fallback: place at safe distance if no good position found
+      mesh.position.copy(tempPos);
+      return new THREE.Vector3(x, y, cfg.startZ + 1000);
     };
 
     // Selects a word from buckets or custom words
@@ -372,7 +334,7 @@ export default function WordRenderer({
             if (fadeProgress >= 1) {
               // Clean up resources and remove from scene
               scene.remove(mesh);
-              if (mesh.material.map) mesh.material.map.dispose();
+              mesh.material.map?.dispose();
               mesh.geometry.dispose();
               mesh.material.dispose();
               active.splice(i, 1);
@@ -412,7 +374,7 @@ export default function WordRenderer({
       // Clean up all active words
       active.forEach(word => {
         scene.remove(word.mesh);
-        if (word.mesh.material.map) word.mesh.material.map.dispose();
+        word.mesh.material.map?.dispose();
         word.mesh.geometry.dispose();
         word.mesh.material.dispose();
       });
@@ -435,28 +397,22 @@ export default function WordRenderer({
       // When custom bucket is full, overwrite one of the predefined buckets
       const targetBucket = 1 + (overwriteCounterRef.current % 4);
       bucketsRef.current[targetBucket] = [...prev];
-      setBucketsState(bucketsRef.current.map(b => [...b]));
       overwriteCounterRef.current += 1;
       return [word];
     });
   }
 
   // Input event handlers
-  function handleInputKeyDown(e) {
+  const handleInputKeyDown = e => {
     e.stopPropagation();
     if (e.key === 'Enter') {
       handleAddWord(inputValue);
       setInputValue('');
     }
-  }
+  };
 
-  function handleInputChange(e) {
-    setInputValue(e.target.value.slice(0, cfg.customMaxChars));
-  }
-
-  function stopMouse(e) {
-    e.stopPropagation();
-  }
+  const handleInputChange = e => setInputValue(e.target.value.slice(0, cfg.customMaxChars));
+  const stopMouse = e => e.stopPropagation();
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100vh', background: 'black' }}>
@@ -478,12 +434,7 @@ export default function WordRenderer({
             color: 'white',
           }}
         />
-        <div style={{ fontSize: 12, opacity: 0.8, marginTop: 6, display: 'none' }}>
-          Custom bucket used every {cfg.customEvery}th spawn. Next overwrite: #{1 + (overwriteCounterRef.current % 4)}
-        </div>
-        <div style={{ marginTop: 6, fontSize: 13, display: 'none' }}>
-          Custom bucket ({customBucket.length}/{cfg.customMaxSize}): {customBucket.join(', ') || 'empty'}
-        </div>
+
         <div style={{ marginTop: 8, fontSize: 12 }}>
           <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
             <input
