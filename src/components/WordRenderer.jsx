@@ -12,10 +12,97 @@ import { AudioSystem } from '../audio/AudioSystem.js';
 export default function WordRenderer({
   // Word collections organized by theme
   buckets = [
-    ['fence', 'border', 'sky', 'drone', 'siren', 'distance', 'refuge', 'broken', 'gone', 'safe', 'aaaaaaaaaa'],
-    ['university', 'home', 'window', 'elderberry', 'hand', 'laundry', 'morning', 'neighbor', 'family', 'sleep'],
-    ['see', 'breathe', 'wait', 'hold', 'remember', 'silence', 'moment', 'space', 'time', 'near'],
-    ['alone', 'waiting', 'grief', 'tenderness', 'courage', 'care', 'loss', 'return', 'belong', 'pause'],
+    [
+      'fence',
+      'border',
+      'sky',
+      'drone',
+      'siren',
+      'distance',
+      'refuge',
+      'broken',
+      'gone',
+      'safe',
+      'signal',
+      'warning',
+      'bunker',
+      'missile',
+      'metal',
+      'search',
+      'shadow',
+      'path',
+      'crossing',
+      'echo',
+    ],
+
+    [
+      'WS',
+      'home',
+      'window',
+      'elderberries',
+      'hand',
+      'laundry',
+      'morning',
+      'neighbor',
+      'family',
+      'sleep',
+      'table',
+      'cup',
+      'bread',
+      'street',
+      'tree',
+      'radio',
+      'door',
+      'lightning',
+      'bucket',
+      'candle',
+    ],
+
+    [
+      'see',
+      'breathe',
+      'wait',
+      'hold',
+      'remember',
+      'silence',
+      'moment',
+      'space',
+      'time',
+      'near',
+      'touch',
+      'listen',
+      'watch',
+      'presence',
+      'smell',
+      'drift',
+      'fade',
+      'notice',
+      'open',
+      'still',
+    ],
+
+    [
+      'alone',
+      'waiting',
+      'grief',
+      'tenderness',
+      'courage',
+      'care',
+      'loss',
+      'return',
+      'belong',
+      'pause',
+      'forgive',
+      'endure',
+      'longing',
+      'hope',
+      'trust',
+      'absence',
+      'memory',
+      'together',
+      'fragile',
+      'alive',
+    ],
   ],
   // Animation timing (milliseconds)
   visiblePause = 1000, // How long words stay visible when stopped
@@ -35,7 +122,7 @@ export default function WordRenderer({
   customMaxSize = 10, // Maximum custom words before overwriting buckets
   customMaxChars = 11, // Character limit for custom words
   // Audio system
-  audioVolume = 0.3, // Master volume (0-1)
+  audioVolume = 0.7, // Master volume (0-1)
   baseOctave = 4, // Base octave for note generation
 }) {
   // DOM and animation references

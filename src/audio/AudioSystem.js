@@ -7,7 +7,7 @@ import * as Tone from 'tone';
 export class AudioSystem {
   constructor(config = {}) {
     this.config = {
-      volume: 0.3,
+      volume: 0.7,
       baseOctave: 4,
       pulseRate: 0.15, // Hz - slow, breathing-like pulse
       ...config,
@@ -91,8 +91,8 @@ export class AudioSystem {
     });
 
     // Create gain nodes for pulsating control
-    this.mainGain = new Tone.Gain(0.6);
-    this.droneGain = new Tone.Gain(0.1);
+    this.mainGain = new Tone.Gain(1.2);
+    this.droneGain = new Tone.Gain(0.25);
 
     // Chain effects: synth → tremolo → delay → reverb → mainGain → destination
     this.synth.connect(this.tremolo);
@@ -192,7 +192,7 @@ export class AudioSystem {
     this.tremolo.frequency.value = this.config.pulseRate * pulseVariation;
 
     // Set volume more subtly with pulsating consideration
-    const baseVolume = Tone.gainToDb(this.config.volume * musical.velocity * 0.6);
+    const baseVolume = Tone.gainToDb(this.config.volume * musical.velocity * 1.0);
     this.synth.volume.value = baseVolume;
 
     // Play main note with contemplative timing
